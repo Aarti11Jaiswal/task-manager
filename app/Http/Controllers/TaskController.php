@@ -7,7 +7,6 @@ use Carbon\Carbon;
 
 class TaskController extends Controller
 {
-    // List tasks
     public function index()
     {
         $tasks = Task::orderBy('due_date')->get();
