@@ -1,48 +1,52 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Task;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class TaskController extends Controller
 {
-    public function index()
-    {
-        $tasks = Task::orderBy('due_date')->get();
+    public function index(Request $request){
+        $tasks = $request->user()->tasks()->orderBy('due_date')->get();
         return response()->json($tasks);
     }
 
-    // Create a task
-    public function store(Request $request)
-    {
+    public function store(Request $request){
         $request->validate([
-            'task_name' => 'required|string|max:255',
-            'due_date' => 'required|date|after:now',
-            'priority' => 'required|in:low,medium,high'
+            'task_name'=>'required|string|max:255',
+            'due_date'=>'required|date|after:now',
+            'priority'=>'required|in:low,medium,high',
+            'description'=>'nullable|string',
         ]);
 
-        $task = Task::create($request->all());
+        $task = $request->user()->tasks()->create($request->only('task_name','description','due_date','priority'));
+        return response()->json($task,201);
+    }
+
+    public function update(Request $request, Task $task){
+        if($task->user_id !== $request->user()->id){
+            return response()->json(['error'=>'Unauthorized'],403);
+        }
+
+        $task->update($request->only('task_name','description','due_date','priority'));
         return response()->json($task);
     }
 
-    // Update a task
-    public function update(Request $request, Task $task)
-    {
-        $task->update($request->all());
-        return response()->json($task);
-    }
+    public function destroy(Request $request, Task $task){
+        if($task->user_id !== $request->user()->id){
+            return response()->json(['error'=>'Unauthorized'],403);
+        }
 
-    // Delete a task
-    public function destroy(Task $task)
-    {
         $task->delete();
-        return response()->json(['message' => 'Task deleted']);
+        return response()->json(['message'=>'Task deleted']);
     }
 
-    // Toggle completed
-    public function markCompleted(Task $task)
-    {
+    public function markCompleted(Request $request, Task $task){
+        if($task->user_id !== $request->user()->id){
+            return response()->json(['error'=>'Unauthorized'],403);
+        }
+
         $task->is_completed = !$task->is_completed;
         $task->save();
         return response()->json($task);
